@@ -5,37 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>분수 시각화 도구</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
         body {
+            /* 전체 배경을 따뜻하고 밝은 파스텔 톤으로 설정 */
+            background-color: #fdf6e3; 
             font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f3f4f6;
         }
-        .chart-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            align-items: center;
+        /* 제목 등에 사용할 귀여운 폰트 */
+        .font-cute {
+            font-family: 'Jua', sans-serif;
         }
-        .pie-svg {
-            width: 100px;
-            height: 100px;
-            overflow: visible;
+        /* 숫자 입력 화살표 숨김 (깔끔한 UI) */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        /* 요소들이 부드럽게 나타나는 애니메이션 */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
-<body class="p-6">
-    <div class="max-w-6xl mx-auto">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">분수 시각화 도구</h1>
-            <button id="addBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                + 분수 추가하기 (<span id="count">0</span>/8)
+<body class="p-4 md:p-8 min-h-screen">
+    <div class="max-w-7xl mx-auto">
+        <!-- 제목을 가운데 정렬하고 귀여운 스타일 적용 -->
+        <div class="text-center mb-8 relative">
+            <h1 class="text-4xl md:text-5xl font-cute text-gray-800 drop-shadow-sm mb-4">
+                🎨 분수 시각화 도구 🍕
+            </h1>
+            <p class="text-gray-600 font-medium mb-6">자연수와 분수를 입력하고 색칠해 보아요!</p>
+            
+            <button id="addBtn" class="bg-blue-400 hover:bg-blue-500 text-white font-cute text-xl py-3 px-8 rounded-full shadow-lg hover:shadow-xl transform transition hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                + 새 분수 만들기 (<span id="count">0</span>/8)
             </button>
         </div>
 
-        <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- 시각화 카드들이 여기에 추가됩니다. -->
+        <!-- 분수 카드들이 들어갈 그리드 -->
+        <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- 자바스크립트를 통해 카드들이 렌더링됩니다. -->
         </div>
     </div>
 
@@ -44,15 +60,15 @@
         let fractions = [];
         let nextId = 0;
 
+        // 아이들이 좋아할 만한 밝고 귀여운 파스텔톤/비비드 컬러
         const colors = [
-            { name: '빨강', value: '#ef4444' },
-            { name: '파랑', value: '#3b82f6' },
-            { name: '초록', value: '#22c55e' },
-            { name: '노랑', value: '#eab308' },
-            { name: '보라', value: '#a855f7' },
-            { name: '주황', value: '#f97316' },
-            { name: '분홍', value: '#ec4899' },
-            { name: '청록', value: '#14b8a6' }
+            { name: '🍓 딸기 빨강', value: '#fb7185' },
+            { name: '🍊 귤 주황', value: '#fb923c' },
+            { name: '🍋 레몬 노랑', value: '#facc15' },
+            { name: '🍏 사과 초록', value: '#4ade80' },
+            { name: '💧 하늘 파랑', value: '#60a5fa' },
+            { name: '🍇 포도 보라', value: '#a78bfa' },
+            { name: '🌸 벚꽃 분홍', value: '#f472b6' }
         ];
 
         const addBtn = document.getElementById('addBtn');
@@ -66,7 +82,7 @@
                 id: nextId++,
                 whole: 0,
                 numerator: 1,
-                denominator: 2,
+                denominator: 4, // 초기값을 1/4로 설정하여 예쁘게 보이도록 함
                 color: colors[fractions.length % colors.length].value
             };
 
@@ -85,7 +101,9 @@
                 let numValue = parseInt(value, 10);
                 if (isNaN(numValue)) numValue = 0;
                 
+                // 분모는 최소 1 이상
                 if (field === 'denominator' && numValue < 1) numValue = 1;
+                // 자연수와 분자는 0 이상
                 if ((field === 'whole' || field === 'numerator') && numValue < 0) numValue = 0;
 
                 if (field === 'color') {
@@ -95,6 +113,14 @@
                 }
                 render();
             }
+        }
+
+        function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+            return {
+                x: centerX + (radius * Math.cos(angleInRadians)),
+                y: centerY + (radius * Math.sin(angleInRadians))
+            };
         }
 
         function getPieSlice(cx, cy, r, startAngle, endAngle) {
@@ -109,44 +135,34 @@
             ].join(" ");
         }
 
-        function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
-            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-            return {
-                x: centerX + (radius * Math.cos(angleInRadians)),
-                y: centerY + (radius * Math.sin(angleInRadians))
-            };
-        }
-
         function createPieChartSVG(filledSlices, totalSlices, color) {
             const cx = 50;
             const cy = 50;
             const r = 45;
-            let svg = `<svg class="pie-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">`;
+            let svg = `<svg class="w-20 h-20 sm:w-24 sm:h-24 overflow-visible drop-shadow-md" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">`;
             
-            // 색칠된 영역 그리기 (배경)
             const anglePerSlice = 360 / totalSlices;
             
+            // 레이어 1: 색칠된 영역 (가장 아래)
             if (filledSlices === totalSlices) {
-                // 전체가 다 칠해진 경우
-                svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" opacity="0.6"/>`;
+                svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" opacity="0.85"/>`;
             } else if (filledSlices > 0) {
-                // 부분만 칠해진 경우
                 const endAngle = filledSlices * anglePerSlice;
                 const pathData = getPieSlice(cx, cy, r, 0, endAngle);
-                svg += `<path d="${pathData}" fill="${color}" opacity="0.6"/>`;
+                svg += `<path d="${pathData}" fill="${color}" opacity="0.85"/>`;
             }
 
-            // 분할선 그리기 (회색 점선) - 위에 그림
+            // 레이어 2: 회색 점선 분할선 (색칠 영역 위에 보이게)
             if (totalSlices > 1) {
                 for (let i = 0; i < totalSlices; i++) {
                     const angle = i * anglePerSlice;
                     const end = polarToCartesian(cx, cy, r, angle);
-                    svg += `<line x1="${cx}" y1="${cy}" x2="${end.x}" y2="${end.y}" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="3,3" />`;
+                    svg += `<line x1="${cx}" y1="${cy}" x2="${end.x}" y2="${end.y}" stroke="#6b7280" stroke-width="2" stroke-dasharray="3,3" />`;
                 }
             }
 
-            // 외곽선 그리기 (검은 실선) - 가장 위에 그림
-            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#000" stroke-width="2"/>`;
+            // 레이어 3: 검은 실선 외곽선 (가장 위)
+            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1f2937" stroke-width="2.5"/>`;
             svg += `</svg>`;
             return svg;
         }
@@ -157,11 +173,11 @@
             grid.innerHTML = '';
 
             fractions.forEach(frac => {
-                // 전체 개수 계산 (대분수 + 가분수)
+                // 전체 조각 수 계산
                 const totalPieces = (frac.whole * frac.denominator) + frac.numerator;
                 const fullPies = Math.floor(totalPieces / frac.denominator);
                 const remainderPieces = totalPieces % frac.denominator;
-                const totalPiesToDraw = fullPies + (remainderPieces > 0 ? 1 : 0) || 1; // 최소 1개는 그림 (0인 경우 대비)
+                const totalPiesToDraw = fullPies + (remainderPieces > 0 ? 1 : 0) || 1; // 0이더라도 1개는 기본 표시
 
                 let chartsHtml = '';
                 for (let i = 0; i < totalPiesToDraw; i++) {
@@ -175,36 +191,41 @@
                 }
 
                 const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-md p-5 flex flex-col gap-4 border border-gray-200';
+                card.className = 'bg-white rounded-[2rem] shadow-sm border-4 border-white p-5 flex flex-col gap-4 fade-in hover:shadow-md transition-shadow';
                 card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex justify-between items-start bg-gray-50 rounded-3xl p-4 border-2 border-gray-100">
+                        <!-- 숫자 입력부: L과 &를 없애고 깔끔하게 배치 -->
+                        <div class="flex items-center gap-3">
                             <div class="flex flex-col items-center">
-                                <label class="text-xs text-gray-500 mb-1">자연수 (L)</label>
-                                <input type="number" min="0" value="${frac.whole}" onchange="updateFraction(${frac.id}, 'whole', this.value)" class="w-16 p-2 border rounded text-center">
+                                <span class="text-xs font-bold text-gray-500 mb-1">자연수</span>
+                                <input type="number" min="0" value="${frac.whole}" onchange="updateFraction(${frac.id}, 'whole', this.value)" class="w-14 h-12 bg-white text-2xl font-bold text-center rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-0 outline-none transition-colors">
                             </div>
-                            <div class="text-2xl mt-4 text-gray-400">&</div>
-                            <div class="flex flex-col gap-1 items-center">
-                                <input type="number" min="0" value="${frac.numerator}" onchange="updateFraction(${frac.id}, 'numerator', this.value)" class="w-16 p-1 border rounded text-center" title="분자 (M)">
-                                <hr class="border-black w-full border-t-2">
-                                <input type="number" min="1" value="${frac.denominator}" onchange="updateFraction(${frac.id}, 'denominator', this.value)" class="w-16 p-1 border rounded text-center" title="분모 (N)">
+                            
+                            <div class="flex flex-col gap-1 items-center justify-center mt-4">
+                                <input type="number" min="0" value="${frac.numerator}" onchange="updateFraction(${frac.id}, 'numerator', this.value)" class="w-12 h-10 bg-white text-xl font-bold text-center rounded-lg border-2 border-gray-200 focus:border-blue-400 outline-none transition-colors" title="분자">
+                                <!-- 분수 가로선 -->
+                                <div class="w-14 h-[3px] bg-gray-800 rounded-full"></div>
+                                <input type="number" min="1" value="${frac.denominator}" onchange="updateFraction(${frac.id}, 'denominator', this.value)" class="w-12 h-10 bg-white text-xl font-bold text-center rounded-lg border-2 border-gray-200 focus:border-blue-400 outline-none transition-colors" title="분모">
                             </div>
                         </div>
-                        <button onclick="removeFraction(${frac.id})" class="text-gray-400 hover:text-red-500 transition-colors" title="삭제">
+
+                        <!-- 삭제 버튼 -->
+                        <button onclick="removeFraction(${frac.id})" class="text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 p-2 rounded-full transition-colors shadow-sm border border-gray-100" title="지우기">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
                     
-                    <div class="mt-2">
-                        <label class="block text-sm text-gray-600 mb-1">색상 선택</label>
-                        <select onchange="updateFraction(${frac.id}, 'color', this.value)" class="w-full p-2 border rounded bg-gray-50">
+                    <!-- 색상 선택기 -->
+                    <div class="px-2">
+                        <select onchange="updateFraction(${frac.id}, 'color', this.value)" class="w-full p-2 border-2 border-gray-200 rounded-xl bg-white font-medium text-gray-700 outline-none focus:border-blue-400 cursor-pointer transition-colors">
                             ${colors.map(c => `<option value="${c.value}" ${c.value === frac.color ? 'selected' : ''}>${c.name}</option>`).join('')}
                         </select>
                     </div>
 
-                    <div class="chart-container mt-4 pt-4 border-t border-gray-100 min-h-[120px]">
+                    <!-- 파이 차트 시각화 영역 -->
+                    <div class="flex flex-wrap gap-4 justify-center items-center p-4 bg-blue-50/30 rounded-3xl min-h-[120px] mt-2 border border-blue-50">
                         ${chartsHtml}
                     </div>
                 `;
@@ -214,7 +235,7 @@
 
         addBtn.addEventListener('click', addFraction);
         
-        // 초기 샘플 1개 추가
+        // 처음 시작할 때 예쁜 샘플 하나 띄우기
         addFraction();
     </script>
 </body>
