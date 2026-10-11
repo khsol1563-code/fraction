@@ -4,239 +4,438 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>분수 시각화 도구</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- 구글 폰트: 초등학생에게 친근한 'Jua' 폰트 적용 -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
     <style>
         body {
-            /* 전체 배경을 따뜻하고 밝은 파스텔 톤으로 설정 */
-            background-color: #fdf6e3; 
-            font-family: 'Noto Sans KR', sans-serif;
-        }
-        /* 제목 등에 사용할 귀여운 폰트 */
-        .font-cute {
             font-family: 'Jua', sans-serif;
+            background-color: #fffbeb; /* 따뜻한 노란색 배경 */
         }
-        /* 숫자 입력 화살표 숨김 (깔끔한 UI) */
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        /* 귀여운 그림자 효과 */
+        .cute-shadow {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+            border: 2px solid #fcd34d;
         }
-        input[type="number"] {
-            -moz-appearance: textfield;
+        .fraction-card {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            transition: transform 0.2s;
         }
-        /* 요소들이 부드럽게 나타나는 애니메이션 */
-        .fade-in {
-            animation: fadeIn 0.3s ease-in-out;
+        .fraction-card:hover {
+            transform: translateY(-5px);
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* 스파클 애니메이션용 */
+        .sparkle {
+            position: absolute;
+            pointer-events: none;
+            transition: all 1s ease-out;
+            opacity: 1;
+            z-index: 100;
         }
     </style>
 </head>
-<body class="p-4 md:p-8 min-h-screen">
-    <div class="max-w-7xl mx-auto">
-        <!-- 제목을 가운데 정렬하고 귀여운 스타일 적용 -->
-        <div class="text-center mb-8 relative">
-            <h1 class="text-4xl md:text-5xl font-cute text-gray-800 drop-shadow-sm mb-4">
-                🎨 분수 시각화 도구 🍕
-            </h1>
-            <p class="text-gray-600 font-medium mb-6">자연수와 분수를 입력하고 색칠해 보아요!</p>
-            
-            <button id="addBtn" class="bg-blue-400 hover:bg-blue-500 text-white font-cute text-xl py-3 px-8 rounded-full shadow-lg hover:shadow-xl transform transition hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-                + 새 분수 만들기 (<span id="count">0</span>/8)
+<body class="text-gray-800 min-h-screen relative">
+
+    <!-- 상단 헤더 -->
+    <header class="relative text-center py-6 bg-yellow-100 shadow-sm border-b-4 border-yellow-300 flex justify-center items-center h-24">
+        <h1 class="text-4xl font-bold text-orange-500 tracking-wide">🍕 분수 시각화 도구 🍰</h1>
+        
+        <!-- 선생님의 문제! 버튼 (우측 상단) -->
+        <button onclick="startQuiz()" class="absolute right-4 md:right-8 top-1/2 transform -translate-y-1/2 bg-rose-400 hover:bg-rose-500 text-white text-lg py-2 px-6 rounded-full shadow-md transition hover:scale-105 border-2 border-rose-500">
+            👨‍🏫 선생님의 문제!
+        </button>
+    </header>
+
+    <!-- 메인 시각화 영역 -->
+    <main class="max-w-6xl mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl text-yellow-700">분수를 만들어서 색칠해 볼까요? (최대 8개)</h2>
+            <button id="addBtn" onclick="addFractionCard()" class="bg-blue-400 hover:bg-blue-500 text-white py-2 px-6 rounded-full shadow-md transition hover:scale-105 text-lg">
+                + 분수 추가하기
             </button>
         </div>
+        
+        <!-- 분수 카드들이 그려질 그리드 -->
+        <div id="fractionsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 자바스크립트로 카드가 추가됩니다. -->
+        </div>
+    </main>
 
-        <!-- 분수 카드들이 들어갈 그리드 -->
-        <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <!-- 자바스크립트를 통해 카드들이 렌더링됩니다. -->
+    <!-- 퀴즈 모달 팝업 -->
+    <div id="quizModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex justify-center items-center z-50">
+        <div id="quizBox" class="bg-white rounded-3xl p-8 w-11/12 max-w-2xl text-center relative cute-shadow overflow-hidden">
+            <button onclick="closeQuiz()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-3xl font-bold">&times;</button>
+            
+            <h2 class="text-3xl text-rose-500 mb-2" id="quizHeader">선생님의 문제!</h2>
+            <div class="text-gray-500 mb-6 text-lg" id="quizProgress">문제 1 / 5</div>
+            
+            <div id="quizContent">
+                <p class="text-2xl mb-8">다음 두 분수 중 <span class="text-blue-500 font-bold">더 큰 분수</span>는 무엇일까요?</p>
+                
+                <div class="flex justify-center gap-6 mb-8">
+                    <button id="btnOption1" onclick="checkAnswer(1)" class="w-40 py-6 text-3xl bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-2xl shadow-sm border-2 border-indigo-200 transition transform hover:scale-105"></button>
+                    <button id="btnOption2" onclick="checkAnswer(2)" class="w-40 py-6 text-3xl bg-teal-100 hover:bg-teal-200 text-teal-700 rounded-2xl shadow-sm border-2 border-teal-200 transition transform hover:scale-105"></button>
+                </div>
+
+                <!-- 정답/오답 피드백 메시지 -->
+                <p id="quizFeedback" class="text-2xl h-8 mb-6 font-bold"></p>
+
+                <!-- 힌트 영역 -->
+                <button onclick="showHint()" class="bg-yellow-400 hover:bg-yellow-500 text-white py-2 px-6 rounded-full shadow-md text-lg transition mb-4">
+                    💡 힌트 보기
+                </button>
+                
+                <div id="hintArea" class="hidden bg-gray-50 rounded-xl p-4 mt-2 flex flex-col justify-center items-center gap-4">
+                    <!-- 힌트 차트가 여기에 나타납니다. -->
+                </div>
+            </div>
+
+            <!-- 결과 화면 영역 (숨김 처리) -->
+            <div id="quizResultScreen" class="hidden">
+                <p class="text-4xl text-green-500 mb-6">🎉 모든 문제를 통과했습니다! 🎉</p>
+                <p class="text-xl text-gray-600 mb-8">참 잘했어요! 정말 멋져요!</p>
+                <button onclick="closeQuiz()" class="bg-blue-400 hover:bg-blue-500 text-white py-3 px-8 rounded-full shadow-md text-xl transition">
+                    돌아가기
+                </button>
+            </div>
         </div>
     </div>
 
+    <!-- 스크립트 로직 -->
     <script>
-        const maxFractions = 8;
-        let fractions = [];
-        let nextId = 0;
-
-        // 아이들이 좋아할 만한 밝고 귀여운 파스텔톤/비비드 컬러
+        // ----------------------------------------------------
+        // [1부] 분수 시각화 도구 로직
+        // ----------------------------------------------------
+        let fractionCount = 0;
+        const MAX_FRACTIONS = 8;
+        
+        // 예쁘고 선명한 색상 팔레트
         const colors = [
-            { name: '🍓 딸기 빨강', value: '#fb7185' },
-            { name: '🍊 귤 주황', value: '#fb923c' },
-            { name: '🍋 레몬 노랑', value: '#facc15' },
-            { name: '🍏 사과 초록', value: '#4ade80' },
-            { name: '💧 하늘 파랑', value: '#60a5fa' },
-            { name: '🍇 포도 보라', value: '#a78bfa' },
-            { name: '🌸 벚꽃 분홍', value: '#f472b6' }
+            { name: '딸기 핑크', val: '#f472b6' },
+            { name: '오렌지', val: '#fb923c' },
+            { name: '바나나 옐로', val: '#facc15' },
+            { name: '메론 그린', val: '#4ade80' },
+            { name: '스카이 블루', val: '#38bdf8' },
+            { name: '포도 퍼플', val: '#c084fc' }
         ];
 
-        const addBtn = document.getElementById('addBtn');
-        const grid = document.getElementById('grid');
-        const countSpan = document.getElementById('count');
+        function addFractionCard() {
+            if (fractionCount >= MAX_FRACTIONS) {
+                alert("최대 8개까지만 만들 수 있어요!");
+                return;
+            }
 
-        function addFraction() {
-            if (fractions.length >= maxFractions) return;
+            const id = Date.now() + Math.floor(Math.random() * 1000);
+            const container = document.getElementById('fractionsContainer');
+            
+            const card = document.createElement('div');
+            card.className = "fraction-card p-5 cute-shadow flex flex-col";
+            card.id = `card-${id}`;
+            
+            // 색상 옵션 생성
+            let colorOptions = colors.map((c, i) => `<option value="${c.val}" ${i === fractionCount % colors.length ? 'selected' : ''}>${c.name}</option>`).join('');
 
-            const newFraction = {
-                id: nextId++,
-                whole: 0,
-                numerator: 1,
-                denominator: 4, // 초기값을 1/4로 설정하여 예쁘게 보이도록 함
-                color: colors[fractions.length % colors.length].value
-            };
-
-            fractions.push(newFraction);
-            render();
-        }
-
-        function removeFraction(id) {
-            fractions = fractions.filter(f => f.id !== id);
-            render();
-        }
-
-        function updateFraction(id, field, value) {
-            const fraction = fractions.find(f => f.id === id);
-            if (fraction) {
-                let numValue = parseInt(value, 10);
-                if (isNaN(numValue)) numValue = 0;
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <select id="color-${id}" class="bg-gray-100 rounded p-1 text-sm outline-none cursor-pointer" onchange="renderFraction(${id})">
+                        ${colorOptions}
+                    </select>
+                    <button onclick="removeCard(${id})" class="text-red-400 hover:text-red-600 text-xl" title="지우기">✖</button>
+                </div>
                 
-                // 분모는 최소 1 이상
-                if (field === 'denominator' && numValue < 1) numValue = 1;
-                // 자연수와 분자는 0 이상
-                if ((field === 'whole' || field === 'numerator') && numValue < 0) numValue = 0;
+                <div class="flex gap-2 mb-4 justify-center items-center text-lg">
+                    <div class="flex flex-col items-center w-16">
+                        <label class="text-sm text-gray-500 mb-1">자연수</label>
+                        <input type="number" id="l-${id}" value="0" min="0" class="w-full text-center border-b-2 border-yellow-300 outline-none text-2xl bg-transparent" oninput="renderFraction(${id})">
+                    </div>
+                    <div class="text-2xl text-gray-400 pt-5">와</div>
+                    <div class="flex flex-col w-16 gap-1">
+                        <input type="number" id="m-${id}" value="1" min="0" class="w-full text-center border-b-2 border-yellow-300 outline-none text-2xl bg-transparent" oninput="renderFraction(${id})">
+                        <input type="number" id="n-${id}" value="2" min="1" class="w-full text-center border-b-2 border-yellow-300 outline-none text-2xl bg-transparent" oninput="renderFraction(${id})">
+                    </div>
+                </div>
 
-                if (field === 'color') {
-                    fraction[field] = value;
-                } else {
-                    fraction[field] = numValue;
-                }
-                render();
-            }
-        }
-
-        function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
-            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-            return {
-                x: centerX + (radius * Math.cos(angleInRadians)),
-                y: centerY + (radius * Math.sin(angleInRadians))
-            };
-        }
-
-        function getPieSlice(cx, cy, r, startAngle, endAngle) {
-            const start = polarToCartesian(cx, cy, r, endAngle);
-            const end = polarToCartesian(cx, cy, r, startAngle);
-            const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-            return [
-                "M", cx, cy,
-                "L", start.x, start.y,
-                "A", r, r, 0, largeArcFlag, 0, end.x, end.y,
-                "Z"
-            ].join(" ");
-        }
-
-        function createPieChartSVG(filledSlices, totalSlices, color) {
-            const cx = 50;
-            const cy = 50;
-            const r = 45;
-            let svg = `<svg class="w-20 h-20 sm:w-24 sm:h-24 overflow-visible drop-shadow-md" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">`;
+                <div id="svg-container-${id}" class="flex-grow flex flex-wrap justify-center items-center content-start gap-2 bg-gray-50 rounded-xl p-3 min-h-[120px]">
+                </div>
+            `;
             
-            const anglePerSlice = 360 / totalSlices;
+            container.appendChild(card);
+            fractionCount++;
+            renderFraction(id);
+            updateAddBtn();
+        }
+
+        function removeCard(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                card.remove();
+                fractionCount--;
+                updateAddBtn();
+            }
+        }
+
+        function updateAddBtn() {
+            const btn = document.getElementById('addBtn');
+            if (fractionCount >= MAX_FRACTIONS) {
+                btn.classList.replace('bg-blue-400', 'bg-gray-400');
+                btn.classList.add('cursor-not-allowed', 'opacity-50');
+            } else {
+                btn.classList.replace('bg-gray-400', 'bg-blue-400');
+                btn.classList.remove('cursor-not-allowed', 'opacity-50');
+            }
+        }
+
+        // 퍼센트에 따른 원호의 X, Y 좌표 계산
+        function getCoordinatesForPercent(percent) {
+            const x = Math.cos(2 * Math.PI * percent - Math.PI / 2) * 45;
+            const y = Math.sin(2 * Math.PI * percent - Math.PI / 2) * 45;
+            return [x + 50, y + 50];
+        }
+
+        // 파이 차트 하나를 그리는 함수 (내부 점선이 색칠 위에 보이도록 순서 조정)
+        function drawPie(piecesFilled, totalPieces, color) {
+            if (totalPieces <= 0) return '';
             
-            // 레이어 1: 색칠된 영역 (가장 아래)
-            if (filledSlices === totalSlices) {
-                svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" opacity="0.85"/>`;
-            } else if (filledSlices > 0) {
-                const endAngle = filledSlices * anglePerSlice;
-                const pathData = getPieSlice(cx, cy, r, 0, endAngle);
-                svg += `<path d="${pathData}" fill="${color}" opacity="0.85"/>`;
+            let html = `<svg viewBox="0 0 100 100" class="w-20 h-20 inline-block drop-shadow-sm">`;
+            
+            // 1. 색상 칠하기 (가장 아래 레이어)
+            if (piecesFilled >= totalPieces || totalPieces === 1) {
+                html += `<circle cx="50" cy="50" r="45" fill="${color}" fill-opacity="0.75"/>`;
+            } else if (piecesFilled > 0) {
+                let percent = piecesFilled / totalPieces;
+                let [endX, endY] = getCoordinatesForPercent(percent);
+                let largeArcFlag = percent > 0.5 ? 1 : 0;
+                let pathData = `M 50 50 L 50 5 A 45 45 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+                html += `<path d="${pathData}" fill="${color}" fill-opacity="0.75"/>`;
             }
 
-            // 레이어 2: 회색 점선 분할선 (색칠 영역 위에 보이게)
-            if (totalSlices > 1) {
-                for (let i = 0; i < totalSlices; i++) {
-                    const angle = i * anglePerSlice;
-                    const end = polarToCartesian(cx, cy, r, angle);
-                    svg += `<line x1="${cx}" y1="${cy}" x2="${end.x}" y2="${end.y}" stroke="#6b7280" stroke-width="2" stroke-dasharray="3,3" />`;
+            // 2. 내부 회색 점선 분할선 (중간 레이어)
+            if (totalPieces > 1) {
+                for(let i=0; i<totalPieces; i++) {
+                    let [endX, endY] = getCoordinatesForPercent(i / totalPieces);
+                    html += `<line x1="50" y1="50" x2="${endX}" y2="${endY}" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="3,3" />`;
                 }
             }
 
-            // 레이어 3: 검은 실선 외곽선 (가장 위)
-            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1f2937" stroke-width="2.5"/>`;
-            svg += `</svg>`;
-            return svg;
+            // 3. 외부 검은색 실선 (가장 위 레이어)
+            html += `<circle cx="50" cy="50" r="45" fill="none" stroke="#111827" stroke-width="2.5"/>`;
+            html += `</svg>`;
+            return html;
         }
 
-        function render() {
-            countSpan.textContent = fractions.length;
-            addBtn.disabled = fractions.length >= maxFractions;
-            grid.innerHTML = '';
+        function createFractionSVGHtml(l, m, n, color) {
+            let fullPies = l + Math.floor(m / n);
+            let remainderM = m % n;
+            let totalPies = fullPies + (remainderM > 0 ? 1 : 0);
+            
+            if(totalPies === 0) totalPies = 1; // 빈 파이 1개 표시
 
-            fractions.forEach(frac => {
-                // 전체 조각 수 계산
-                const totalPieces = (frac.whole * frac.denominator) + frac.numerator;
-                const fullPies = Math.floor(totalPieces / frac.denominator);
-                const remainderPieces = totalPieces % frac.denominator;
-                const totalPiesToDraw = fullPies + (remainderPieces > 0 ? 1 : 0) || 1; // 0이더라도 1개는 기본 표시
+            let svgs = '';
+            for(let i=0; i<totalPies; i++) {
+                let isFull = i < fullPies;
+                let currentM = isFull ? n : remainderM;
+                svgs += drawPie(currentM, n, color);
+            }
+            return svgs;
+        }
 
-                let chartsHtml = '';
-                for (let i = 0; i < totalPiesToDraw; i++) {
-                    let piecesToFill = 0;
-                    if (i < fullPies) {
-                        piecesToFill = frac.denominator;
-                    } else if (i === fullPies) {
-                        piecesToFill = remainderPieces;
+        function renderFraction(id) {
+            const L = parseInt(document.getElementById(`l-${id}`).value) || 0;
+            let M = parseInt(document.getElementById(`m-${id}`).value) || 0;
+            let N = parseInt(document.getElementById(`n-${id}`).value) || 1;
+            const color = document.getElementById(`color-${id}`).value;
+            
+            if (N < 1) N = 1; // 분모는 1 이상
+
+            const svgContainer = document.getElementById(`svg-container-${id}`);
+            svgContainer.innerHTML = createFractionSVGHtml(L, M, N, color);
+        }
+
+        // 초기 시작시 카드 1개 생성
+        addFractionCard();
+
+
+        // ----------------------------------------------------
+        // [2부] 선생님의 문제! (퀴즈) 로직
+        // ----------------------------------------------------
+        let quizQuestions = [];
+        let currentQIndex = 0;
+
+        function rand(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        // 분수를 한글 텍스트로 변환
+        function formatFrac(f) {
+            if (f.L > 0) return `${f.L}과 ${f.M}/${f.N}`;
+            return `${f.M}/${f.N}`;
+        }
+
+        // 문제 5개 생성기 (진분수 2, 가분수 2, 대분수 1 섞어서)
+        function generateQuiz() {
+            quizQuestions = [];
+            const types = ['proper', 'proper', 'improper', 'improper', 'mixed'];
+            // 순서 섞기
+            types.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < 5; i++) {
+                let type = types[i];
+                let f1, f2, val1, val2;
+                
+                // 값이 똑같은 분수가 나오지 않도록 반복
+                do {
+                    if (type === 'proper') { // 진분수 (분자 < 분모)
+                        f1 = { L: 0, M: rand(1, 7), N: rand(2, 8) };
+                        if (f1.M >= f1.N) f1.M = f1.N - 1;
+                        f2 = { L: 0, M: rand(1, 7), N: rand(2, 8) };
+                        if (f2.M >= f2.N) f2.M = f2.N - 1;
+                    } 
+                    else if (type === 'improper') { // 가분수 (분자 > 분모)
+                        f1 = { L: 0, M: rand(5, 13), N: rand(2, 6) };
+                        if (f1.M <= f1.N) f1.M = f1.N + rand(1, 4);
+                        f2 = { L: 0, M: rand(5, 13), N: rand(2, 6) };
+                        if (f2.M <= f2.N) f2.M = f2.N + rand(1, 4);
+                    } 
+                    else { // 대분수 (자연수 1~3)
+                        f1 = { L: rand(1, 3), M: rand(1, 4), N: rand(2, 5) };
+                        if (f1.M >= f1.N) f1.M = f1.N - 1;
+                        f2 = { L: rand(1, 3), M: rand(1, 4), N: rand(2, 5) };
+                        if (f2.M >= f2.N) f2.M = f2.N - 1;
                     }
-                    chartsHtml += createPieChartSVG(piecesToFill, frac.denominator, frac.color);
+                    val1 = f1.L + (f1.M / f1.N);
+                    val2 = f2.L + (f2.M / f2.N);
+                } while (val1 === val2);
+
+                let question = { frac1: f1, frac2: f2, correct: val1 > val2 ? 1 : 2 };
+                
+                // 좌우 버튼 위치 랜덤화
+                if (Math.random() > 0.5) {
+                    question = { frac1: f2, frac2: f1, correct: val2 > val1 ? 1 : 2 };
                 }
-
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-[2rem] shadow-sm border-4 border-white p-5 flex flex-col gap-4 fade-in hover:shadow-md transition-shadow';
-                card.innerHTML = `
-                    <div class="flex justify-between items-start bg-gray-50 rounded-3xl p-4 border-2 border-gray-100">
-                        <!-- 숫자 입력부: L과 &를 없애고 깔끔하게 배치 -->
-                        <div class="flex items-center gap-3">
-                            <div class="flex flex-col items-center">
-                                <span class="text-xs font-bold text-gray-500 mb-1">자연수</span>
-                                <input type="number" min="0" value="${frac.whole}" onchange="updateFraction(${frac.id}, 'whole', this.value)" class="w-14 h-12 bg-white text-2xl font-bold text-center rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:ring-0 outline-none transition-colors">
-                            </div>
-                            
-                            <div class="flex flex-col gap-1 items-center justify-center mt-4">
-                                <input type="number" min="0" value="${frac.numerator}" onchange="updateFraction(${frac.id}, 'numerator', this.value)" class="w-12 h-10 bg-white text-xl font-bold text-center rounded-lg border-2 border-gray-200 focus:border-blue-400 outline-none transition-colors" title="분자">
-                                <!-- 분수 가로선 -->
-                                <div class="w-14 h-[3px] bg-gray-800 rounded-full"></div>
-                                <input type="number" min="1" value="${frac.denominator}" onchange="updateFraction(${frac.id}, 'denominator', this.value)" class="w-12 h-10 bg-white text-xl font-bold text-center rounded-lg border-2 border-gray-200 focus:border-blue-400 outline-none transition-colors" title="분모">
-                            </div>
-                        </div>
-
-                        <!-- 삭제 버튼 -->
-                        <button onclick="removeFraction(${frac.id})" class="text-gray-400 hover:text-red-500 bg-white hover:bg-red-50 p-2 rounded-full transition-colors shadow-sm border border-gray-100" title="지우기">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    
-                    <!-- 색상 선택기 -->
-                    <div class="px-2">
-                        <select onchange="updateFraction(${frac.id}, 'color', this.value)" class="w-full p-2 border-2 border-gray-200 rounded-xl bg-white font-medium text-gray-700 outline-none focus:border-blue-400 cursor-pointer transition-colors">
-                            ${colors.map(c => `<option value="${c.value}" ${c.value === frac.color ? 'selected' : ''}>${c.name}</option>`).join('')}
-                        </select>
-                    </div>
-
-                    <!-- 파이 차트 시각화 영역 -->
-                    <div class="flex flex-wrap gap-4 justify-center items-center p-4 bg-blue-50/30 rounded-3xl min-h-[120px] mt-2 border border-blue-50">
-                        ${chartsHtml}
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+                quizQuestions.push(question);
+            }
         }
 
-        addBtn.addEventListener('click', addFraction);
-        
-        // 처음 시작할 때 예쁜 샘플 하나 띄우기
-        addFraction();
+        function startQuiz() {
+            generateQuiz();
+            currentQIndex = 0;
+            document.getElementById('quizModal').classList.remove('hidden');
+            document.getElementById('quizContent').classList.remove('hidden');
+            document.getElementById('quizResultScreen').classList.add('hidden');
+            document.getElementById('quizProgress').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function closeQuiz() {
+            document.getElementById('quizModal').classList.add('hidden');
+        }
+
+        function loadQuestion() {
+            const q = quizQuestions[currentQIndex];
+            document.getElementById('quizProgress').innerText = `문제 ${currentQIndex + 1} / 5`;
+            
+            const btn1 = document.getElementById('btnOption1');
+            const btn2 = document.getElementById('btnOption2');
+            
+            btn1.innerText = formatFrac(q.frac1);
+            btn2.innerText = formatFrac(q.frac2);
+            
+            btn1.disabled = false;
+            btn2.disabled = false;
+            
+            // UI 초기화
+            const feedback = document.getElementById('quizFeedback');
+            feedback.innerText = '';
+            feedback.className = 'text-2xl h-8 mb-6 font-bold';
+            
+            document.getElementById('hintArea').classList.add('hidden');
+            document.getElementById('hintArea').innerHTML = '';
+        }
+
+        function showHint() {
+            const q = quizQuestions[currentQIndex];
+            const hintArea = document.getElementById('hintArea');
+            
+            hintArea.classList.remove('hidden');
+            // 파란색과 초록색 테마로 그려줌
+            const svg1 = createFractionSVGHtml(q.frac1.L, q.frac1.M, q.frac1.N, '#818cf8');
+            const svg2 = createFractionSVGHtml(q.frac2.L, q.frac2.M, q.frac2.N, '#2dd4bf');
+            
+            hintArea.innerHTML = `
+                <div class="flex items-center gap-4 w-full px-4">
+                    <div class="w-20 text-center text-indigo-600 font-bold text-xl">${formatFrac(q.frac1)}</div>
+                    <div class="flex-grow flex flex-wrap gap-1 border-l-4 border-indigo-200 pl-4">${svg1}</div>
+                </div>
+                <div class="w-full border-t border-gray-200 my-1"></div>
+                <div class="flex items-center gap-4 w-full px-4">
+                    <div class="w-20 text-center text-teal-600 font-bold text-xl">${formatFrac(q.frac2)}</div>
+                    <div class="flex-grow flex flex-wrap gap-1 border-l-4 border-teal-200 pl-4">${svg2}</div>
+                </div>
+            `;
+        }
+
+        function checkAnswer(selectedChoice) {
+            const q = quizQuestions[currentQIndex];
+            const feedback = document.getElementById('quizFeedback');
+            const btn1 = document.getElementById('btnOption1');
+            const btn2 = document.getElementById('btnOption2');
+
+            if (selectedChoice === q.correct) {
+                // 정답 처리
+                feedback.innerText = '⭕ 정답입니다!';
+                feedback.className = 'text-2xl h-8 mb-6 font-bold text-green-500';
+                createSparkles();
+                
+                // 버튼 잠금
+                btn1.disabled = true;
+                btn2.disabled = true;
+
+                // 1.5초 후 다음 문제로
+                setTimeout(() => {
+                    currentQIndex++;
+                    if (currentQIndex < 5) {
+                        loadQuestion();
+                    } else {
+                        // 모든 문제 완료
+                        document.getElementById('quizContent').classList.add('hidden');
+                        document.getElementById('quizProgress').classList.add('hidden');
+                        document.getElementById('quizResultScreen').classList.remove('hidden');
+                        createSparkles(true); // 왕창 스파클
+                    }
+                }, 1500);
+
+            } else {
+                // 오답 처리
+                feedback.innerText = '❌ 오답입니다. 다시 생각해봅시다!';
+                feedback.className = 'text-2xl h-8 mb-6 font-bold text-red-500';
+            }
+        }
+
+        // 스파클 반짝이 애니메이션
+        function createSparkles(massive = false) {
+            const quizBox = document.getElementById('quizBox');
+            const count = massive ? 40 : 15;
+            
+            for(let i=0; i<count; i++) {
+                let sparkle = document.createElement('div');
+                sparkle.innerText = '✨';
+                sparkle.className = 'sparkle';
+                sparkle.style.left = (Math.random() * 90 + 5) + '%';
+                sparkle.style.top = (Math.random() * 90 + 5) + '%';
+                sparkle.style.fontSize = (Math.random() * 20 + 15) + 'px';
+                
+                quizBox.appendChild(sparkle);
+                
+                setTimeout(() => {
+                    sparkle.style.transform = `translate(${(Math.random()-0.5)*150}px, -150px) rotate(${Math.random()*360}deg)`;
+                    sparkle.style.opacity = '0';
+                }, 50);
+                
+                setTimeout(() => sparkle.remove(), 1050);
+            }
+        }
     </script>
 </body>
 </html>
