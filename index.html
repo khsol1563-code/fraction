@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분수 시각화 도구</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+        .pie-svg {
+            width: 100px;
+            height: 100px;
+            overflow: visible;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">분수 시각화 도구</h1>
+            <button id="addBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                + 분수 추가하기 (<span id="count">0</span>/8)
+            </button>
+        </div>
+
+        <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 시각화 카드들이 여기에 추가됩니다. -->
+        </div>
+    </div>
+
+    <script>
+        const maxFractions = 8;
+        let fractions = [];
+        let nextId = 0;
+
+        const colors = [
+            { name: '빨강', value: '#ef4444' },
+            { name: '파랑', value: '#3b82f6' },
+            { name: '초록', value: '#22c55e' },
+            { name: '노랑', value: '#eab308' },
+            { name: '보라', value: '#a855f7' },
+            { name: '주황', value: '#f97316' },
+            { name: '분홍', value: '#ec4899' },
+            { name: '청록', value: '#14b8a6' }
+        ];
+
+        const addBtn = document.getElementById('addBtn');
+        const grid = document.getElementById('grid');
+        const countSpan = document.getElementById('count');
+
+        function addFraction() {
+            if (fractions.length >= maxFractions) return;
+
+            const newFraction = {
+                id: nextId++,
+                whole: 0,
+                numerator: 1,
+                denominator: 2,
+                color: colors[fractions.length % colors.length].value
+            };
+
+            fractions.push(newFraction);
+            render();
+        }
+
+        function removeFraction(id) {
+            fractions = fractions.filter(f => f.id !== id);
+            render();
+        }
+
+        function updateFraction(id, field, value) {
+            const fraction = fractions.find(f => f.id === id);
+            if (fraction) {
+                let numValue = parseInt(value, 10);
+                if (isNaN(numValue)) numValue = 0;
+                
+                if (field === 'denominator' && numValue < 1) numValue = 1;
+                if ((field === 'whole' || field === 'numerator') && numValue < 0) numValue = 0;
+
+                if (field === 'color') {
+                    fraction[field] = value;
+                } else {
+                    fraction[field] = numValue;
+                }
+                render();
+            }
+        }
+
+        function getPieSlice(cx, cy, r, startAngle, endAngle) {
+            const start = polarToCartesian(cx, cy, r, endAngle);
+            const end = polarToCartesian(cx, cy, r, startAngle);
+            const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+            return [
+                "M", cx, cy,
+                "L", start.x, start.y,
+                "A", r, r, 0, largeArcFlag, 0, end.x, end.y,
+                "Z"
+            ].join(" ");
+        }
+
+        function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+            const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+            return {
+                x: centerX + (radius * Math.cos(angleInRadians)),
+                y: centerY + (radius * Math.sin(angleInRadians))
+            };
+        }
+
+        function createPieChartSVG(filledSlices, totalSlices, color) {
+            const cx = 50;
+            const cy = 50;
+            const r = 45;
+            let svg = `<svg class="pie-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">`;
+            
+            // 색칠된 영역 그리기 (배경)
+            const anglePerSlice = 360 / totalSlices;
+            
+            if (filledSlices === totalSlices) {
+                // 전체가 다 칠해진 경우
+                svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" opacity="0.6"/>`;
+            } else if (filledSlices > 0) {
+                // 부분만 칠해진 경우
+                const endAngle = filledSlices * anglePerSlice;
+                const pathData = getPieSlice(cx, cy, r, 0, endAngle);
+                svg += `<path d="${pathData}" fill="${color}" opacity="0.6"/>`;
+            }
+
+            // 분할선 그리기 (회색 점선) - 위에 그림
+            if (totalSlices > 1) {
+                for (let i = 0; i < totalSlices; i++) {
+                    const angle = i * anglePerSlice;
+                    const end = polarToCartesian(cx, cy, r, angle);
+                    svg += `<line x1="${cx}" y1="${cy}" x2="${end.x}" y2="${end.y}" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="3,3" />`;
+                }
+            }
+
+            // 외곽선 그리기 (검은 실선) - 가장 위에 그림
+            svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#000" stroke-width="2"/>`;
+            svg += `</svg>`;
+            return svg;
+        }
+
+        function render() {
+            countSpan.textContent = fractions.length;
+            addBtn.disabled = fractions.length >= maxFractions;
+            grid.innerHTML = '';
+
+            fractions.forEach(frac => {
+                // 전체 개수 계산 (대분수 + 가분수)
+                const totalPieces = (frac.whole * frac.denominator) + frac.numerator;
+                const fullPies = Math.floor(totalPieces / frac.denominator);
+                const remainderPieces = totalPieces % frac.denominator;
+                const totalPiesToDraw = fullPies + (remainderPieces > 0 ? 1 : 0) || 1; // 최소 1개는 그림 (0인 경우 대비)
+
+                let chartsHtml = '';
+                for (let i = 0; i < totalPiesToDraw; i++) {
+                    let piecesToFill = 0;
+                    if (i < fullPies) {
+                        piecesToFill = frac.denominator;
+                    } else if (i === fullPies) {
+                        piecesToFill = remainderPieces;
+                    }
+                    chartsHtml += createPieChartSVG(piecesToFill, frac.denominator, frac.color);
+                }
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-md p-5 flex flex-col gap-4 border border-gray-200';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="flex flex-col items-center">
+                                <label class="text-xs text-gray-500 mb-1">자연수 (L)</label>
+                                <input type="number" min="0" value="${frac.whole}" onchange="updateFraction(${frac.id}, 'whole', this.value)" class="w-16 p-2 border rounded text-center">
+                            </div>
+                            <div class="text-2xl mt-4 text-gray-400">&</div>
+                            <div class="flex flex-col gap-1 items-center">
+                                <input type="number" min="0" value="${frac.numerator}" onchange="updateFraction(${frac.id}, 'numerator', this.value)" class="w-16 p-1 border rounded text-center" title="분자 (M)">
+                                <hr class="border-black w-full border-t-2">
+                                <input type="number" min="1" value="${frac.denominator}" onchange="updateFraction(${frac.id}, 'denominator', this.value)" class="w-16 p-1 border rounded text-center" title="분모 (N)">
+                            </div>
+                        </div>
+                        <button onclick="removeFraction(${frac.id})" class="text-gray-400 hover:text-red-500 transition-colors" title="삭제">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <label class="block text-sm text-gray-600 mb-1">색상 선택</label>
+                        <select onchange="updateFraction(${frac.id}, 'color', this.value)" class="w-full p-2 border rounded bg-gray-50">
+                            ${colors.map(c => `<option value="${c.value}" ${c.value === frac.color ? 'selected' : ''}>${c.name}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <div class="chart-container mt-4 pt-4 border-t border-gray-100 min-h-[120px]">
+                        ${chartsHtml}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        addBtn.addEventListener('click', addFraction);
+        
+        // 초기 샘플 1개 추가
+        addFraction();
+    </script>
+</body>
+</html>
