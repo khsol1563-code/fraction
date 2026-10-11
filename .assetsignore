@@ -1,0 +1,12 @@
+.git/**
+.github/**
+.env*
+.dev.vars*
+.aws/**
+.ssh/**
+node_modules/**
+scripts/**
+tests/**
+wrangler.*
+package*.json
+README.md
