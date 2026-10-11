@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분수 시각화 도구</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 구글 폰트: 초등학생에게 친근한 'Jua' 폰트 적용 -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #fffbeb; /* 따뜻한 노란색 배경 */
+        }
+        /* 귀여운 그림자 효과 */
+        .cute-shadow {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+            border: 2px solid #fcd34d;
+        }
+        .fraction-card {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            transition: transform 0.2s;
+        }
+        .fraction-card:hover {
+            transform: translateY(-5px);
+        }
+        /* 스파클 애니메이션용 */
+        .sparkle {
+            position: absolute;
+            pointer-events: none;
+            transition: all 1s ease-out;
+            opacity: 1;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen relative">
+
+    <!-- 상단 헤더 -->
+    <header class="relative text-center py-6 bg-yellow-100 shadow-sm border-b-4 border-yellow-300 flex justify-center items-center h-24">
+        <h1 class="text-4xl font-bold text-orange-500 tracking-wide">🍕 분수 시각화 도구 🍰</h1>
+        
+        <!-- 선생님의 문제! 버튼 (우측 상단) -->
+        <button onclick="startQuiz()" class="absolute right-4 md:right-8 top-1/2 transform -translate-y-1/2 bg-rose-400 hover:bg-rose-500 text-white text-lg py-2 px-6 rounded-full shadow-md transition hover:scale-105 border-2 border-rose-500">
+            👨‍🏫 선생님의 문제!
+        </button>
+    </header>
+
+    <!-- 메인 시각화 영역 -->
+    <main class="max-w-6xl mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl text-yellow-700">분수를 만들어서 색칠해 볼까요? (최대 8개)</h2>
+            <button id="addBtn" onclick="addFractionCard()" class="bg-blue-400 hover:bg-blue-500 text-white py-2 px-6 rounded-full shadow-md transition hover:scale-105 text-lg">
+                + 분수 추가하기
+            </button>
+        </div>
+        
+        <!-- 분수 카드들이 그려질 그리드 -->
+        <div id="fractionsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 자바스크립트로 카드가 추가됩니다. -->
+        </div>
+    </main>
+
+    <!-- 퀴즈 모달 팝업 -->
+    <div id="quizModal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex justify-center items-center z-50">
+        <div id="quizBox" class="bg-white rounded-3xl p-8 w-11/12 max-w-2xl text-center relative cute-shadow overflow-hidden">
+            <button onclick="closeQuiz()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-3xl font-bold">&times;</button>
+            
+            <h2 class="text-3xl text-rose-500 mb-2" id="quizHeader">선생님의 문제!</h2>
+            <div class="text-gray-500 mb-6 text-lg" id="quizProgress">문제 1 / 5</div>
+            
+            <div id="quizContent">
+                <p class="text-2xl mb-8">다음 두 분수 중 <span class="text-blue-500 font-bold">더 큰 분수</span>는 무엇일까요?</p>
+                
+                <div class="flex justify-center gap-6 mb-8">
+                    <!-- 버튼 내용이 HTML(세로 분수)로 삽입되므로 기존 구조 유지 -->
+                    <button id="btnOption1" onclick="checkAnswer(1)" class="w-40 py-4 text-4xl bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-2xl shadow-sm border-2 border-indigo-200 transition transform hover:scale-105 flex justify-center items-center h-32"></button>
+                    <button id="btnOption2" onclick="checkAnswer(2)" class="w-40 py-4 text-4xl bg-teal-100 hover:bg-teal-200 text-teal-700 rounded-2xl shadow-sm border-2 border-teal-200 transition transform hover:scale-105 flex justify-center items-center h-32"></button>
+                </div>
+
+                <!-- 정답/오답 피드백 메시지 -->
+                <p id="quizFeedback" class="text-2xl h-8 mb-6 font-bold"></p>
+
+                <!-- 힌트 영역 -->
+                <button onclick="showHint()" class="bg-yellow-400 hover:bg-yellow-500 text-white py-2 px-6 rounded-full shadow-md text-lg transition mb-4">
+                    💡 힌트 보기
+                </button>
+                
+                <div id="hintArea" class="hidden bg-gray-50 rounded-xl p-4 mt-2 flex flex-col justify-center items-center gap-4">
+                    <!-- 힌트 차트가 여기에 나타납니다. -->
+                </div>
+            </div>
+
+            <!-- 결과 화면 영역 (숨김 처리) -->
+            <div id="quizResultScreen" class="hidden">
+                <p class="text-4xl text-green-500 mb-6">🎉 모든 문제를 통과했습니다! 🎉</p>
+                <p class="text-xl text-gray-600 mb-8">참 잘했어요! 정말 멋져요!</p>
+                <button onclick="closeQuiz()" class="bg-blue-400 hover:bg-blue-500 text-white py-3 px-8 rounded-full shadow-md text-xl transition">
+                    돌아가기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 스크립트 로직 -->
+    <script>
+        // ----------------------------------------------------
+        // [1부] 분수 시각화 도구 로직
+        // ----------------------------------------------------
+        let fractionCount = 0;
+        const MAX_FRACTIONS = 8;
+        
+        // 예쁘고 선명한 색상 팔레트
+        const colors = [
+            { name: '딸기 핑크', val: '#f472b6' },
+            { name: '오렌지', val: '#fb923c' },
+            { name: '바나나 옐로', val: '#facc15' },
+            { name: '메론 그린', val: '#4ade80' },
+            { name: '스카이 블루', val: '#38bdf8' },
+            { name: '포도 퍼플', val: '#c084fc' }
+        ];
+
+        function addFractionCard() {
+            if (fractionCount >= MAX_FRACTIONS) {
+                alert("최대 8개까지만 만들 수 있어요!");
+                return;
+            }
+
+            const id = Date.now() + Math.floor(Math.random() * 1000);
+            const container = document.getElementById('fractionsContainer');
+            
+            const card = document.createElement('div');
+            card.className = "fraction-card p-5 cute-shadow flex flex-col";
+            card.id = `card-${id}`;
+            
+            // 색상 옵션 생성
+            let colorOptions = colors.map((c, i) => `<option value="${c.val}" ${i === fractionCount % colors.length ? 'selected' : ''}>${c.name}</option>`).join('');
+
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <select id="color-${id}" class="bg-gray-100 rounded p-1 text-sm outline-none cursor-pointer" onchange="renderFraction(${id})">
+                        ${colorOptions}
+                    </select>
+                    <button onclick="removeCard(${id})" class="text-red-400 hover:text-red-600 text-xl" title="지우기">✖</button>
+                </div>
+                
+                <div class="flex gap-2 mb-4 justify-center items-center text-lg">
+                    <div class="flex flex-col items-center w-16">
+                        <label class="text-sm text-gray-500 mb-1">자연수</label>
+                        <input type="number" id="l-${id}" value="0" min="0" class="w-full text-center border-b-2 border-yellow-300 outline-none text-2xl bg-transparent" oninput="renderFraction(${id})">
+                    </div>
+                    <div class="text-2xl text-gray-400 pt-5">와</div>
+                    <div class="flex flex-col w-16 gap-1">
+                        <input type="number" id="m-${id}" value="1" min="0" class="w-full text-center border-b-2 border-yellow-300 outline-none text-2xl bg-transparent" oninput="renderFraction(${id})">
+                        <input type="number" id="n-${id}" value="2" min="1" class="w-full text-center border-b-2 border-yellow-300 outline-none text-2xl bg-transparent" oninput="renderFraction(${id})">
+                    </div>
+                </div>
+
+                <div id="svg-container-${id}" class="flex-grow flex flex-wrap justify-center items-center content-start gap-2 bg-gray-50 rounded-xl p-3 min-h-[120px]">
+                </div>
+            `;
+            
+            container.appendChild(card);
+            fractionCount++;
+            renderFraction(id);
+            updateAddBtn();
+        }
+
+        function removeCard(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                card.remove();
+                fractionCount--;
+                updateAddBtn();
+            }
+        }
+
+        function updateAddBtn() {
+            const btn = document.getElementById('addBtn');
+            if (fractionCount >= MAX_FRACTIONS) {
+                btn.classList.replace('bg-blue-400', 'bg-gray-400');
+                btn.classList.add('cursor-not-allowed', 'opacity-50');
+            } else {
+                btn.classList.replace('bg-gray-400', 'bg-blue-400');
+                btn.classList.remove('cursor-not-allowed', 'opacity-50');
+            }
+        }
+
+        // 퍼센트에 따른 원호의 X, Y 좌표 계산
+        function getCoordinatesForPercent(percent) {
+            const x = Math.cos(2 * Math.PI * percent - Math.PI / 2) * 45;
+            const y = Math.sin(2 * Math.PI * percent - Math.PI / 2) * 45;
+            return [x + 50, y + 50];
+        }
+
+        // 파이 차트 하나를 그리는 함수 (내부 점선이 색칠 위에 보이도록 순서 조정)
+        function drawPie(piecesFilled, totalPieces, color) {
+            if (totalPieces <= 0) return '';
+            
+            let html = `<svg viewBox="0 0 100 100" class="w-20 h-20 inline-block drop-shadow-sm">`;
+            
+            // 1. 색상 칠하기 (가장 아래 레이어)
+            if (piecesFilled >= totalPieces || totalPieces === 1) {
+                html += `<circle cx="50" cy="50" r="45" fill="${color}" fill-opacity="0.75"/>`;
+            } else if (piecesFilled > 0) {
+                let percent = piecesFilled / totalPieces;
+                let [endX, endY] = getCoordinatesForPercent(percent);
+                let largeArcFlag = percent > 0.5 ? 1 : 0;
+                let pathData = `M 50 50 L 50 5 A 45 45 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+                html += `<path d="${pathData}" fill="${color}" fill-opacity="0.75"/>`;
+            }
+
+            // 2. 내부 회색 점선 분할선 (중간 레이어)
+            if (totalPieces > 1) {
+                for(let i=0; i<totalPieces; i++) {
+                    let [endX, endY] = getCoordinatesForPercent(i / totalPieces);
+                    html += `<line x1="50" y1="50" x2="${endX}" y2="${endY}" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="3,3" />`;
+                }
+            }
+
+            // 3. 외부 검은색 실선 (가장 위 레이어)
+            html += `<circle cx="50" cy="50" r="45" fill="none" stroke="#111827" stroke-width="2.5"/>`;
+            html += `</svg>`;
+            return html;
+        }
+
+        function createFractionSVGHtml(l, m, n, color) {
+            let fullPies = l + Math.floor(m / n);
+            let remainderM = m % n;
+            let totalPies = fullPies + (remainderM > 0 ? 1 : 0);
+            
+            if(totalPies === 0) totalPies = 1; // 빈 파이 1개 표시
+
+            let svgs = '';
+            for(let i=0; i<totalPies; i++) {
+                let isFull = i < fullPies;
+                let currentM = isFull ? n : remainderM;
+                svgs += drawPie(currentM, n, color);
+            }
+            return svgs;
+        }
+
+        function renderFraction(id) {
+            const L = parseInt(document.getElementById(`l-${id}`).value) || 0;
+            let M = parseInt(document.getElementById(`m-${id}`).value) || 0;
+            let N = parseInt(document.getElementById(`n-${id}`).value) || 1;
+            const color = document.getElementById(`color-${id}`).value;
+            
+            if (N < 1) N = 1; // 분모는 1 이상
+
+            const svgContainer = document.getElementById(`svg-container-${id}`);
+            svgContainer.innerHTML = createFractionSVGHtml(L, M, N, color);
+        }
+
+        // 초기 시작시 카드 1개 생성
+        addFractionCard();
+
+
+        // ----------------------------------------------------
+        // [2부] 선생님의 문제! (퀴즈) 로직
+        // ----------------------------------------------------
+        let quizQuestions = [];
+        let currentQIndex = 0;
+
+        function rand(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        // 🌟 수정된 부분: 분수를 교과서 방식(세로 분수)의 HTML 코드로 변환
+        function formatFrac(f) {
+            let html = `<div class="inline-flex items-center justify-center gap-1.5 align-middle">`;
+            
+            // 자연수 부분이 있을 때
+            if (f.L > 0) {
+                html += `<span>${f.L}</span>`;
+            }
+            
+            // 분수 부분 (분자, 가로선, 분모)
+            html += `<div class="flex flex-col items-center text-[0.75em]">
+                        <span class="leading-none">${f.M}</span>
+                        <div class="w-full h-[3px] bg-current my-0.5 rounded-full"></div>
+                        <span class="leading-none">${f.N}</span>
+                     </div>`;
+                     
+            html += `</div>`;
+            return html;
+        }
+
+        // 문제 5개 생성기 (진분수 2, 가분수 2, 대분수 1 섞어서)
+        function generateQuiz() {
+            quizQuestions = [];
+            const types = ['proper', 'proper', 'improper', 'improper', 'mixed'];
+            // 순서 섞기
+            types.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < 5; i++) {
+                let type = types[i];
+                let f1, f2, val1, val2;
+                
+                // 값이 똑같은 분수가 나오지 않도록 반복
+                do {
+                    if (type === 'proper') { // 진분수 (분자 < 분모)
+                        f1 = { L: 0, M: rand(1, 7), N: rand(2, 8) };
+                        if (f1.M >= f1.N) f1.M = f1.N - 1;
+                        f2 = { L: 0, M: rand(1, 7), N: rand(2, 8) };
+                        if (f2.M >= f2.N) f2.M = f2.N - 1;
+                    } 
+                    else if (type === 'improper') { // 가분수 (분자 > 분모)
+                        f1 = { L: 0, M: rand(5, 13), N: rand(2, 6) };
+                        if (f1.M <= f1.N) f1.M = f1.N + rand(1, 4);
+                        f2 = { L: 0, M: rand(5, 13), N: rand(2, 6) };
+                        if (f2.M <= f2.N) f2.M = f2.N + rand(1, 4);
+                    } 
+                    else { // 대분수 (자연수 1~3)
+                        f1 = { L: rand(1, 3), M: rand(1, 4), N: rand(2, 5) };
+                        if (f1.M >= f1.N) f1.M = f1.N - 1;
+                        f2 = { L: rand(1, 3), M: rand(1, 4), N: rand(2, 5) };
+                        if (f2.M >= f2.N) f2.M = f2.N - 1;
+                    }
+                    val1 = f1.L + (f1.M / f1.N);
+                    val2 = f2.L + (f2.M / f2.N);
+                } while (val1 === val2);
+
+                let question = { frac1: f1, frac2: f2, correct: val1 > val2 ? 1 : 2 };
+                
+                // 좌우 버튼 위치 랜덤화
+                if (Math.random() > 0.5) {
+                    question = { frac1: f2, frac2: f1, correct: val2 > val1 ? 1 : 2 };
+                }
+                quizQuestions.push(question);
+            }
+        }
+
+        function startQuiz() {
+            generateQuiz();
+            currentQIndex = 0;
+            document.getElementById('quizModal').classList.remove('hidden');
+            document.getElementById('quizContent').classList.remove('hidden');
+            document.getElementById('quizResultScreen').classList.add('hidden');
+            document.getElementById('quizProgress').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function closeQuiz() {
+            document.getElementById('quizModal').classList.add('hidden');
+        }
+
+        function loadQuestion() {
+            const q = quizQuestions[currentQIndex];
+            document.getElementById('quizProgress').innerText = `문제 ${currentQIndex + 1} / 5`;
+            
+            const btn1 = document.getElementById('btnOption1');
+            const btn2 = document.getElementById('btnOption2');
+            
+            // innerText 대신 innerHTML을 사용하여 세로형 분수 렌더링
+            btn1.innerHTML = formatFrac(q.frac1);
+            btn2.innerHTML = formatFrac(q.frac2);
+            
+            btn1.disabled = false;
+            btn2.disabled = false;
+            
+            // UI 초기화
+            const feedback = document.getElementById('quizFeedback');
+            feedback.innerText = '';
+            feedback.className = 'text-2xl h-8 mb-6 font-bold';
+            
+            document.getElementById('hintArea').classList.add('hidden');
+            document.getElementById('hintArea').innerHTML = '';
+        }
+
+        function showHint() {
+            const q = quizQuestions[currentQIndex];
+            const hintArea = document.getElementById('hintArea');
+            
+            hintArea.classList.remove('hidden');
+            // 파란색과 초록색 테마로 그려줌
+            const svg1 = createFractionSVGHtml(q.frac1.L, q.frac1.M, q.frac1.N, '#818cf8');
+            const svg2 = createFractionSVGHtml(q.frac2.L, q.frac2.M, q.frac2.N, '#2dd4bf');
+            
+            hintArea.innerHTML = `
+                <div class="flex items-center gap-4 w-full px-4 py-2">
+                    <div class="w-24 text-center text-indigo-600 font-bold text-2xl flex justify-center">${formatFrac(q.frac1)}</div>
+                    <div class="flex-grow flex flex-wrap gap-1 border-l-4 border-indigo-200 pl-4">${svg1}</div>
+                </div>
+                <div class="w-full border-t border-gray-200 my-1"></div>
+                <div class="flex items-center gap-4 w-full px-4 py-2">
+                    <div class="w-24 text-center text-teal-600 font-bold text-2xl flex justify-center">${formatFrac(q.frac2)}</div>
+                    <div class="flex-grow flex flex-wrap gap-1 border-l-4 border-teal-200 pl-4">${svg2}</div>
+                </div>
+            `;
+        }
+
+        function checkAnswer(selectedChoice) {
+            const q = quizQuestions[currentQIndex];
+            const feedback = document.getElementById('quizFeedback');
+            const btn1 = document.getElementById('btnOption1');
+            const btn2 = document.getElementById('btnOption2');
+
+            if (selectedChoice === q.correct) {
+                // 정답 처리
+                feedback.innerText = '⭕ 정답입니다!';
+                feedback.className = 'text-2xl h-8 mb-6 font-bold text-green-500';
+                createSparkles();
+                
+                // 버튼 잠금
+                btn1.disabled = true;
+                btn2.disabled = true;
+
+                // 1.5초 후 다음 문제로
+                setTimeout(() => {
+                    currentQIndex++;
+                    if (currentQIndex < 5) {
+                        loadQuestion();
+                    } else {
+                        // 모든 문제 완료
+                        document.getElementById('quizContent').classList.add('hidden');
+                        document.getElementById('quizProgress').classList.add('hidden');
+                        document.getElementById('quizResultScreen').classList.remove('hidden');
+                        createSparkles(true); // 왕창 스파클
+                    }
+                }, 1500);
+
+            } else {
+                // 오답 처리
+                feedback.innerText = '❌ 오답입니다. 다시 생각해봅시다!';
+                feedback.className = 'text-2xl h-8 mb-6 font-bold text-red-500';
+            }
+        }
+
+        // 스파클 반짝이 애니메이션
+        function createSparkles(massive = false) {
+            const quizBox = document.getElementById('quizBox');
+            const count = massive ? 40 : 15;
+            
+            for(let i=0; i<count; i++) {
+                let sparkle = document.createElement('div');
+                sparkle.innerText = '✨';
+                sparkle.className = 'sparkle';
+                sparkle.style.left = (Math.random() * 90 + 5) + '%';
+                sparkle.style.top = (Math.random() * 90 + 5) + '%';
+                sparkle.style.fontSize = (Math.random() * 20 + 15) + 'px';
+                
+                quizBox.appendChild(sparkle);
+                
+                setTimeout(() => {
+                    sparkle.style.transform = `translate(${(Math.random()-0.5)*150}px, -150px) rotate(${Math.random()*360}deg)`;
+                    sparkle.style.opacity = '0';
+                }, 50);
+                
+                setTimeout(() => sparkle.remove(), 1050);
+            }
+        }
+    </script>
+</body>
+</html>
